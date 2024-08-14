@@ -241,7 +241,7 @@ fn get_heading_refs(events: &[Event]) -> Vec<HeadingRef> {
     heading_refs
 }
 
-fn convert_footnotes_to_github_style(old_events: &mut Vec<Event>) {
+fn convert_footnotes_to_github_style(old_events: &mut Vec<Event>, current_path_permalink: &str) {
     let events = std::mem::take(old_events);
     // step 1: We need to extract footnotes from the event stream and tweak footnote references
 
@@ -273,7 +273,7 @@ fn convert_footnotes_to_github_style(old_events: &mut Vec<Event>) {
                 // nr is a number of references to this footnote
                 let (n, nr) = footnote_numbers.entry(name.clone()).or_insert((n, 0usize));
                 *nr += 1;
-                let reference = Event::Html(format!(r##"<sup class="footnote-reference" id="fr-{name}-{nr}"><a href="#fn-{name}">[{n}]</a></sup>"##).into());
+                let reference = Event::Html(format!(r##"<sup class="footnote-reference" id="fr-{name}-{nr}"><a href="{current_path_permalink}#fn-{name}">[{n}]</a></sup>"##).into());
 
                 if footnote_bodies_stack.is_empty() {
                     // we are in the main text, just output the reference
@@ -778,7 +778,7 @@ pub fn markdown_to_html(
         }
 
         if context.config.markdown.bottom_footnotes {
-            convert_footnotes_to_github_style(&mut events);
+            convert_footnotes_to_github_style(&mut events, context.current_page_permalink);
         }
 
         cmark::html::push_html(&mut html, events.into_iter());
@@ -884,7 +884,7 @@ mod tests {
 
         let content = "Some text *without* footnotes.\n\nOnly ~~fancy~~ formatting.";
         let mut events: Vec<_> = Parser::new_ext(&content, opts).collect();
-        convert_footnotes_to_github_style(&mut events);
+        convert_footnotes_to_github_style(&mut events, "https://www.getzola.org/test/");
         let mut html = String::new();
         cmark::html::push_html(&mut html, events.into_iter());
         assert_snapshot!(html);
@@ -901,7 +901,7 @@ mod tests {
 
         let content = "This text has a footnote[^1]\n [^1]:But it is meaningless.";
         let mut events: Vec<_> = Parser::new_ext(&content, opts).collect();
-        convert_footnotes_to_github_style(&mut events);
+        convert_footnotes_to_github_style(&mut events, "https://www.getzola.org/test/");
         let mut html = String::new();
         cmark::html::push_html(&mut html, events.into_iter());
         assert_snapshot!(html);
@@ -918,7 +918,7 @@ mod tests {
 
         let content = "This text has two[^2] footnotes[^1]\n[^1]: not sorted.\n[^2]: But they are";
         let mut events: Vec<_> = Parser::new_ext(&content, opts).collect();
-        convert_footnotes_to_github_style(&mut events);
+        convert_footnotes_to_github_style(&mut events, "https://www.getzola.org/test/");
         let mut html = String::new();
         cmark::html::push_html(&mut html, events.into_iter());
         assert_snapshot!(html);
@@ -935,7 +935,7 @@ mod tests {
 
         let content = "[^1]:It's before the reference.\n\n There is footnote definition?[^1]";
         let mut events: Vec<_> = Parser::new_ext(&content, opts).collect();
-        convert_footnotes_to_github_style(&mut events);
+        convert_footnotes_to_github_style(&mut events, "https://www.getzola.org/test/");
         let mut html = String::new();
         cmark::html::push_html(&mut html, events.into_iter());
         assert_snapshot!(html);
@@ -952,7 +952,7 @@ mod tests {
 
         let content = "This text has two[^1] identical footnotes[^1]\n[^1]: So one is present.\n[^2]: But another in not.";
         let mut events: Vec<_> = Parser::new_ext(&content, opts).collect();
-        convert_footnotes_to_github_style(&mut events);
+        convert_footnotes_to_github_style(&mut events, "https://www.getzola.org/test/");
         let mut html = String::new();
         cmark::html::push_html(&mut html, events.into_iter());
         assert_snapshot!(html);
@@ -969,7 +969,7 @@ mod tests {
 
         let content = "This text has a footnote[^1]\n[^1]: But the footnote has another footnote[^2].\n[^2]: That's it.";
         let mut events: Vec<_> = Parser::new_ext(&content, opts).collect();
-        convert_footnotes_to_github_style(&mut events);
+        convert_footnotes_to_github_style(&mut events, "https://www.getzola.org/test/");
         let mut html = String::new();
         cmark::html::push_html(&mut html, events.into_iter());
         assert_snapshot!(html);
